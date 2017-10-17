@@ -30,10 +30,21 @@ trainer <- data.frame(tr,empty2)
 for (i in 1:length(jk)){
   count <- 0
   for (j in 1:n){
-    if (horse$jockey[k] == jk[i]){
+    if (horse$jockey[j] == jk[i]){
       count <- count + 1
       jockey[i,2] <- rr[j]
     }
   }
   jockey[i,2] <- jockey[i,2]/count
+}
+
+for (i in 1:length(tr)){
+  count <- 0
+  for (j in 1:n){
+    if (horse$trainer[j] == jk[i]){
+      count <- count + 1
+      trainer[i,2] <- rr[j]
+    }
+  }
+  trainer[i,2] <- trainer[i,2]/count
 }
