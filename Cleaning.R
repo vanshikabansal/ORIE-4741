@@ -19,23 +19,24 @@ for (k in 1:n){
   }
 }
 
-marks <- c(marks,n)
+marks <- c(marks,n) #includes a marker for the last race
+#marks is a vector that includes the index of the last horse in a given race
 
-jk <- unique(horse$jockey)
+jk <- unique(horse$jockey) #collects all the unique names of the jockeys/trainers
 tr <- unique(horse$trainer)
 empty1 <- rep(0,length((jk)))
 empty2 <- rep(0,length((tr)))
-jockey <- data.frame(jk,empty1)
+jockey <- data.frame(jk,empty1) #created a data frame for these
 trainer <- data.frame(tr,empty2)
 for (i in 1:length(jk)){
-  count <- 0
+  count <- 0 #count helps identify how many races the trainer/jockey is involved in
   for (j in 1:n){
     if (horse$jockey[j] == jk[i]){
       count <- count + 1
       jockey[i,2] <- rr[j]
     }
   }
-  jockey[i,2] <- jockey[i,2]/count
+  jockey[i,2] <- jockey[i,2]/count #the jockey/trainer's metric is the average rank
 }
 
 for (i in 1:length(tr)){
