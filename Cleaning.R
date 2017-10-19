@@ -8,7 +8,7 @@ names(race)
 
 n <- nrow(horse)
 
-rr <- horse$horse_number
+rr <- horse$finishing_position
 marks <- c()
 for (k in 1:n){
   #if the line is character and the next line is a 1, then that completes a race
@@ -52,16 +52,36 @@ for (i in 1:length(tr)){
 lastplace<- rep(0,n)
 hnumber <- horse$horse_number
 
-#get all the last place rankings
-for (k in 1:n){
-  prevrace <- 0
-  thisrace <- 0
-  for (i in 2:length(marks)){
-    if (k > marks[i]){
-      prevrace = marks[i-1]
-      thisrace = marks[i]
+#returns the greatest value in the list that does not exceed the index
+floor <- function(index,list){
+  val <- 1
+  for (i in list){
+    if (index >i){
+      val = i
     }
   }
+  return(val)
+}
+
+#returns the smallest value in the list that does not exceed the index
+ceil <- function(index,list){
+  val <- 0
+  for (i in rev(list)){
+    if (index <= i){
+      val = i
+    }
+  }
+  return(val)
+}
+
+
+
+#get all the last place rankings
+#if you fall between a race, then that means your index is between the greatest item in the list that does not exceed yours
+#and the smallest item in the list that exceeds your value
+for (k in 1:n){
+  prevrace <- floor(k,marks)
+  thisrace <- ceil(k,marks)
   lastplace[k]=max(hnumber[prevrace+1:thisrace])
 }
 
