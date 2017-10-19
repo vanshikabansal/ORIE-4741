@@ -42,10 +42,40 @@ for (i in 1:length(jk)){
 for (i in 1:length(tr)){
   count <- 0
   for (j in 1:n){
-    if (horse$trainer[j] == jk[i]){
+    if (horse$trainer[j] == tr[i]){
       count <- count + 1
       trainer[i,2] <- rr[j]
     }
   }
   trainer[i,2] <- trainer[i,2]/count
+}
+lastplace<- rep(0,n)
+hnumber <- horse$horse_number
+
+#get all the last place rankings
+for (k in 1:n){
+  prevrace <- 0
+  thisrace <- 0
+  for (i in 2:length(marks)){
+    if (k > marks[i]){
+      prevrace = marks[i-1]
+      thisrace = marks[i]
+    }
+  }
+  lastplace[k]=max(hnumber[prevrace+1:thisrace])
+}
+
+
+
+#convert all the text into last place rankings
+for (k in 1:n){
+  if (k!=n && !is.na(rr[k+1])){
+    if (is.character(rr[k])){
+      rr[k] = lastplace[k] 
+    }
+  }
+}
+#compare marks to the last place rankings
+for (k in 1:n){
+  
 }
