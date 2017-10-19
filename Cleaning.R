@@ -9,7 +9,7 @@ names(race)
 n <- nrow(horse)
 
 rr <- horse$finishing_position
-marks <- c()
+marks <- c(1)
 for (k in 1:n){
   #if the line is character and the next line is a 1, then that completes a race
   if (k!= n && !is.na(rr[k+1])){
@@ -33,7 +33,7 @@ for (i in 1:length(jk)){
   for (j in 1:n){
     if (horse$jockey[j] == jk[i]){
       count <- count + 1
-      jockey[i,2] <- rr[j]
+      jockey[i,2] <- rr[j]/14
     }
   }
   jockey[i,2] <- jockey[i,2]/count #the jockey/trainer's metric is the average rank
@@ -44,7 +44,7 @@ for (i in 1:length(tr)){
   for (j in 1:n){
     if (horse$trainer[j] == tr[i]){
       count <- count + 1
-      trainer[i,2] <- rr[j]
+      trainer[i,2] <- rr[j]/14
     }
   }
   trainer[i,2] <- trainer[i,2]/count
@@ -84,18 +84,17 @@ for (k in 1:n){
   thisrace <- ceil(k,marks)
   lastplace[k]=max(hnumber[prevrace+1:thisrace])
 }
+#this part don't work
 
 
 
 #convert all the text into last place rankings
-for (k in 1:n){
-  if (k!=n && !is.na(rr[k+1])){
-    if (is.character(rr[k])){
-      rr[k] = lastplace[k] 
-    }
-  }
-}
-#compare marks to the last place rankings
-for (k in 1:n){
-  
-}
+#for (k in 1:n){
+#  if (k!=n && !is.na(rr[k+1])){
+#    if (is.character(rr[k])){
+#      rr[k] = lastplace[k] 
+#    }
+#  }
+#}
+
+maxplace <- rep(14,n)
