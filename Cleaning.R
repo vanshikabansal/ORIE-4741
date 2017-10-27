@@ -24,31 +24,14 @@ marks <- c(marks,n) #includes a marker for the last race
 
 jk <- unique(horse$jockey) #collects all the unique names of the jockeys/trainers
 tr <- unique(horse$trainer)
+hrs <- unique(horse$horse_name)
 empty1 <- rep(0,length((jk)))
 empty2 <- rep(0,length((tr)))
+empty3 <- rep(0,length(hrs))
 jockey <- data.frame(jk,empty1) #created a data frame for these
 trainer <- data.frame(tr,empty2)
-for (i in 1:length(jk)){
-  count <- 0 #count helps identify how many races the trainer/jockey is involved in
-  for (j in 1:n){
-    if (horse$jockey[j] == jk[i]){
-      count <- count + 1
-      jockey[i,2] <- rr[j]/14
-    }
-  }
-  jockey[i,2] <- jockey[i,2]/count #the jockey/trainer's metric is the average rank
-}
+hnames <- data.frame(hrs,empty3)
 
-for (i in 1:length(tr)){
-  count <- 0
-  for (j in 1:n){
-    if (horse$trainer[j] == tr[i]){
-      count <- count + 1
-      trainer[i,2] <- rr[j]/14
-    }
-  }
-  trainer[i,2] <- trainer[i,2]/count
-}
 lastplace<- rep(0,n)
 hnumber <- horse$horse_number
 
@@ -79,22 +62,42 @@ ceil <- function(index,list){
 #get all the last place rankings
 #if you fall between a race, then that means your index is between the greatest item in the list that does not exceed yours
 #and the smallest item in the list that exceeds your value
-for (k in 1:n){
+for (k in 2:n){
   prevrace <- floor(k,marks)
   thisrace <- ceil(k,marks)
-  lastplace[k]=max(hnumber[prevrace+1:thisrace])
+  lastplace[k] = thisrace-prevrace
 }
-#this part don't work
+lastplace[1:14] = 14
 
+for (i in 1:length(jk)){
+  count <- 0 #count helps identify how many races the trainer/jockey is involved in
+  for (j in 1:n){
+    if (horse$jockey[j] == jk[i]){
+      count <- count + 1
+      jockey[i,2] <- rr[j]/lastplace[j]
+    }
+  }
+  jockey[i,2] <- jockey[i,2]/count #the jockey/trainer's metric is the average rank
+}
 
+for (i in 1:length(tr)){
+  count <- 0
+  for (j in 1:n){
+    if (horse$trainer[j] == tr[i]){
+      count <- count + 1
+      trainer[i,2] <- rr[j]/lastplace[j]
+    }
+  }
+  trainer[i,2] <- trainer[i,2]/count
+}
 
-#convert all the text into last place rankings
-#for (k in 1:n){
-#  if (k!=n && !is.na(rr[k+1])){
-#    if (is.character(rr[k])){
-#      rr[k] = lastplace[k] 
-#    }
-#  }
-#}
-
-maxplace <- rep(14,n)
+for (i in 1:length(hrs)){
+  count <- 0
+  for (j in 1:n){
+    if (horse$horse_name[j] == hrs[i]){
+      count <- count + 1
+      hnames[i,2] <- rr[j]/lastplace[j]
+    }
+  }
+  hnames[i,2] <- hnames[i,2]/count
+}
