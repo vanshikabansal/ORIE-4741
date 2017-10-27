@@ -22,9 +22,9 @@ for (k in 1:n){
 marks <- c(marks,n) #includes a marker for the last race
 #marks is a vector that includes the index of the last horse in a given race
 
-jk <- unique(horse$jockey) #collects all the unique names of the jockeys/trainers
-tr <- unique(horse$trainer)
-hrs <- unique(horse$horse_name)
+jk <- c(levels(horse$jockey)) #collects all the unique names of the jockeys/trainers
+tr <- c(levels(horse$trainer))
+hrs <- c(levels(horse$horse_name))
 empty1 <- rep(0,length((jk)))
 empty2 <- rep(0,length((tr)))
 empty3 <- rep(0,length(hrs))
@@ -69,10 +69,24 @@ for (k in 2:n){
 }
 lastplace[1:14] = 14
 
+rr <- as.numeric(as.character(rr))
+
+#convert all the text into last place rankings
+for (k in 1:n){
+        if (is.na(rr[k])){
+            rr[k] = lastplace[k] 
+        }
+  }
+
+
+
+
+
+
 for (i in 1:length(jk)){
   count <- 0 #count helps identify how many races the trainer/jockey is involved in
   for (j in 1:n){
-    if (horse$jockey[j] == jk[i]){
+    if (horse[j,5] == jk[i]){
       count <- count + 1
       jockey[i,2] <- rr[j]/lastplace[j]
     }
@@ -83,7 +97,7 @@ for (i in 1:length(jk)){
 for (i in 1:length(tr)){
   count <- 0
   for (j in 1:n){
-    if (horse$trainer[j] == tr[i]){
+    if (horse[j,6] == tr[i]){
       count <- count + 1
       trainer[i,2] <- rr[j]/lastplace[j]
     }
@@ -94,10 +108,11 @@ for (i in 1:length(tr)){
 for (i in 1:length(hrs)){
   count <- 0
   for (j in 1:n){
-    if (horse$horse_name[j] == hrs[i]){
+    if (horse[j,3] == hrs[i]){
       count <- count + 1
       hnames[i,2] <- rr[j]/lastplace[j]
     }
   }
   hnames[i,2] <- hnames[i,2]/count
 }
+
