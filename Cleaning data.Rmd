@@ -1,0 +1,316 @@
+---
+title: "Cleaning data"
+author: "Vanshika Bansal"
+date: "27 October 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Assume we will predict the results for only one race, given the features for different horses. Then, specific information about horses like which tracks they run well in won't be used.
+
+```{r, echo=FALSE}
+
+horse<- read.csv("race-result-horse.csv", stringsAsFactors = FALSE)
+race <- read.csv("race-result-race.csv", stringsAsFactors = FALSE)
+
+# Merge race and horse information
+mydata <- merge(horse, race, by = "race_id")
+mydata <- mydata[!is.na(mydata$finishing_position), ]
+
+#Removing columns deemed unnecessary
+mydata <- subset(mydata, select = -c(src, sectional_time, incident_report, length_behind_winner, horse_number, race_date, race_number, track, track_condition,race_name, race_course))
+
+#Cleaning positions to remove ties
+mydata$finishing_position[mydata$finishing_position == "1 DH"] = 1
+mydata$finishing_position[mydata$finishing_position == "2 DH"] = 2
+mydata$finishing_position[mydata$finishing_position == "3 DH"] = 3
+mydata$finishing_position[mydata$finishing_position == "4 DH"] = 4
+mydata$finishing_position[mydata$finishing_position == "5 DH"] = 5
+mydata$finishing_position[mydata$finishing_position == "6 DH"] = 6
+mydata$finishing_position[mydata$finishing_position == "7 DH"] = 7
+mydata$finishing_position[mydata$finishing_position == "8 DH"] = 8
+mydata$finishing_position[mydata$finishing_position == "9 DH"] = 9
+mydata$finishing_position[mydata$finishing_position == "10 DH"] = 10
+mydata$finishing_position[mydata$finishing_position == "11 DH"] = 11
+mydata$finishing_position[mydata$finishing_position == "12 DH"] = 12
+mydata$finishing_position[mydata$finishing_position == "13 DH"] = 13
+
+b = subset(mydata, !is.na(as.numeric(mydata$finishing_position)))
+
+non_placing_horses <- mydata[mydata$finishing_position == "WV-A" |mydata$finishing_position== "WV"  | mydata$finishing_position=="WX"  | mydata$finishing_position=="PU" | mydata$finishing_position== "UR" |  mydata$finishing_position=="FE"  | mydata$finishing_position=="TNP" |mydata$finishing_position== "DISQ" | mydata$finishing_position=="WX-A" | mydata$finishing_position=="DNF",]
+withdrawn_horses <- mydata[mydata$finishing_position == "WV-A" |mydata$finishing_position== "WV"  | mydata$finishing_position=="WX"  | mydata$finishing_position=="WX-A" ,]
+
+#Use non withdrawn horses for predictions
+mydata <- mydata[!(mydata$finishing_position %in%  withdrawn_horses$finishing_position),]
+
+#Allotting non placing horses that weren't withdrawn the last or a bad position of 14
+mydata$finishing_position <- as.numeric(mydata$finishing_position)
+
+
+#Percentiles for horse
+all_ids = unique(mydata$race_id)
+
+holder = b$race_id[-1]
+holder[length(holder) + 1] = 0
+
+c = b[(which(b$race_id != holder)),"finishing_position"]
+c[length(c) + 1] = tail(b$finishing_position,1)
+b$percentile = as.numeric(b$finishing_position) / (as.numeric(c[match(b$race_id, all_ids)]))
+b$ids = paste(b$horse_id, b$race_id)
+mydata$ids = paste(mydata$horse_id, mydata$race_id)
+mydata <- merge(mydata, b[,c("ids", "percentile")], by = "ids", all.x = TRUE)
+mydata$percentile[is.na(mydata$percentile)] = 1
+
+```
+
+```{r, evaluate = FALSE}
+
+#separate mydata by distance
+
+
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_1), "running_position_1"] = 14
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_2), "running_position_2"] = 14
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_3), "running_position_3"] = 14
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_4), "running_position_4"] = 14
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_5), "running_position_5"] = 14
+mydata[is.na(mydata$finishing_position) & is.na(mydata$running_position_6), "running_position_6"] = 14
+```
+
+```{r,echo = FALSE}
+mydata$finishing_position[is.na(mydata$finishing_position)] = 14
+
+#Assuming no positions/times given in race set as race hasn't started yet
+mydata <- subset(mydata, select = -c(running_position_1, running_position_2, running_position_3, running_position_4, running_position_5, running_position_6, finish_time))
+
+#Convert data to numeric to run random forest
+mydata$actual_weight <- as.numeric(mydata$actual_weight)
+mydata$declared_horse_weight <- as.numeric(mydata$declared_horse_weight)
+mydata$draw <- as.numeric(mydata$draw)
+mydata$win_odds <- as.numeric(mydata$win_odds)
+
+```
+
+```{r,eval = FALSE}
+#Separate races by distance
+race_lengths <- sort(unique(mydata$race_distance))
+#Making race class numeric
+mydata$race_class[mydata$race_class == "Class 1"] = 1
+mydata$race_class[mydata$race_class == "Class 2"] = 2
+mydata$race_class[mydata$race_class == "Class 3"] = 3
+mydata$race_class[mydata$race_class == "Class 4"] = 4
+mydata$race_class[mydata$race_class == "Class 5"] = 5
+
+race1 <- mydata[mydata$race_distance == race_lengths[1],]
+race2 <- mydata[mydata$race_distance  == race_lengths[2],]
+race3 <- mydata[mydata$race_distance == race_lengths[3],]
+race4 <- mydata[mydata$race_distance == race_lengths[4],]
+race5 <- mydata[mydata$race_distance == race_lengths[5],]
+race6 <- mydata[mydata$race_distance == race_lengths[6],]
+race7 <- mydata[mydata$race_distance == race_lengths[7],]
+race8 <- mydata[mydata$race_distance == race_lengths[8],]
+race9 <- mydata[mydata$race_distance == race_lengths[9],]
+
+race_frames <- c(race1, race2, race3, race4, race5, race6, race7, race8, race9)
+```
+
+```{r, eval=FALSE}
+#Try to remove NAs (remove later cols with empty positions for short races)
+
+race1 <- subset(race1, select = -c(running_position_4, running_position_5, running_position_6))
+race2 <- subset(race2, select = -c(running_position_4, running_position_5, running_position_6))
+race3 <- subset(race3, select = -c(running_position_5, running_position_6))
+race4 <- subset(race4, select = -c(running_position_5, running_position_6))
+race5 <- subset(race5, select = -c(running_position_5, running_position_6))
+race6 <- subset(race6, select = -c(running_position_6))
+race7 <- subset(race7, select = -c(running_position_6))
+```
+
+```{r, echo = FALSE}
+
+
+#Find meaningful features for horses, jockeys and trainers
+
+
+
+horseaverages = data.frame(horse_id = unique(mydata$horse_id))
+for(i in 1:length(unique(mydata$horse_id))){
+  horseaverages[i,2] = mean(mydata$percentile[which(mydata$horse_id == horseaverages[i,1])])
+}
+colnames(horseaverages)[2] = "horse_avg_percentile"
+
+jockeyaverages = data.frame(jockey = unique(mydata$jockey))
+for(i in 1:length(unique(mydata$jockey))){
+  jockeyaverages[i,2] = mean(mydata$percentile[which(mydata$jockey == jockeyaverages[i,1])])
+}
+colnames(jockeyaverages)[2] = "jockey_avg_percentile"
+
+traineraverages = data.frame(trainer = unique(mydata$trainer))
+for(i in 1:length(unique(mydata$trainer))){
+  traineraverages[i,2] = mean(mydata$percentile[which(mydata$trainer == traineraverages[i,1])])
+}
+colnames(traineraverages)[2] = "trainer_avg_percentile"
+
+mydata <- merge(mydata, traineraverages, by = "trainer", all.x = TRUE)
+
+mydata <- merge(mydata, jockeyaverages, by = "jockey", all.x = TRUE)
+
+mydata <- merge(mydata, horseaverages, by = "horse_id", all.x = TRUE)
+
+mydata <- subset(mydata, select = -c(ids, horse_id, jockey, trainer, horse_name))
+
+#Separate races by class and train
+library(randomForest)
+classes = unique(mydata$race_class)
+set.seed(0)
+error = rep(0,16)
+
+race1 = mydata[mydata$race_class == classes[1], ]
+race1 = subset(race1, select = -c(race_class, race_id))
+model1 = randomForest(finishing_position~., race1[sample(nrow(race1)/5),])
+test1 = race1[sample(nrow(race1)/5),]
+finishing_position <- predict(model1, test1)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[1] = sum((test1$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race2 = mydata[mydata$race_class == classes[2], ]
+race2 = subset(race2, select = -c(race_class, race_id))
+model2 = randomForest(finishing_position~., race2[sample(nrow(race2)/5),])
+test2 = race2[sample(nrow(race2)/5),]
+finishing_position <- predict(model2, test2)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[2] = sum((test2$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race3 = mydata[mydata$race_class == classes[3], ]
+race3 = subset(race3, select = -c(race_class, race_id))
+model3 = randomForest(finishing_position~., race3[sample(nrow(race3)/5),])
+test3 = race3[sample(nrow(race3)/5),]
+finishing_position <- predict(model3, test3)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[3] = sum((test3$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race4 = mydata[mydata$race_class == classes[4], ]
+race4 = subset(race4, select = -c(race_class, race_id))
+model4 = randomForest(finishing_position~., race4[sample(nrow(race4)/5),])
+test4 = race4[sample(nrow(race4)/5),]
+finishing_position <- predict(model4, test4)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[4] = sum((test4$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race5 = mydata[mydata$race_class == classes[5], ]
+race5 = subset(race5, select = -c(race_class, race_id))
+model5 = randomForest(finishing_position~., race5[sample(nrow(race5)/5),])
+test5 = race5[sample(nrow(race5)/5),]
+finishing_position <- predict(model5, test5)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[5] = sum((test5$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race6 = mydata[mydata$race_class == classes[6], ]
+race6 = subset(race6, select = -c(race_class, race_id))
+model6 = randomForest(finishing_position~., race6[sample(nrow(race6)/5),])
+test6 = race6[sample(nrow(race6)/5),]
+finishing_position <- predict(model6, test6)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[6] = sum((test6$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race7 = mydata[mydata$race_class == classes[7], ]
+race7 = subset(race7, select = -c(race_class, race_id))
+model7 = randomForest(finishing_position~., race7[sample(nrow(race7)/5),])
+test7 = race7[sample(nrow(race7)/5),]
+finishing_position <- predict(model7, test7)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[7] = sum((test7$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race8 = mydata[mydata$race_class == classes[8], ]
+race8 = subset(race8, select = -c(race_class, race_id))
+model8 = randomForest(finishing_position~., race8[sample(nrow(race8)/5),])
+test8 = race8[sample(nrow(race8)/5),]
+finishing_position <- predict(model8, test8)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[8] = sum((test8$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race9 = mydata[mydata$race_class == classes[9], ]
+race9 = subset(race9, select = -c(race_class, race_id))
+model9 = randomForest(finishing_position~., race9[sample(nrow(race9)/5),])
+test9 = race9[sample(nrow(race9)/5),]
+finishing_position <- predict(model9, test9)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[9] = sum((test9$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race10 = mydata[mydata$race_class == classes[10], ]
+race10 = subset(race10, select = -c(race_class, race_id))
+model10 = randomForest(finishing_position~., race10[sample(nrow(race10)/5),])
+test10 = race10[sample(nrow(race10)/5),]
+finishing_position <- predict(model10, test10)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[10] = sum((test10$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race11 = mydata[mydata$race_class == classes[11], ]
+race11 = subset(race11, select = -c(race_class, race_id))
+model11 = randomForest(finishing_position~., race11[sample(nrow(race11)/5),])
+test11 = race11[sample(nrow(race11)/5),]
+finishing_position <- predict(model11, test11)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[11] = sum((test11$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race12 = mydata[mydata$race_class == classes[12], ]
+race12 = subset(race12, select = -c(race_class, race_id))
+model12 = randomForest(finishing_position~., race12[sample(nrow(race12)/5),])
+test12 = race12[sample(nrow(race12)/5),]
+finishing_position <- predict(model12, test12)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[12] = sum((test12$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race13 = mydata[mydata$race_class == classes[13], ]
+race13 = subset(race13, select = -c(race_class, race_id))
+model13 = randomForest(finishing_position~., race13[sample(nrow(race13)/5),])
+test13 = race13[sample(nrow(race13)/5),]
+finishing_position <- predict(model13, test13)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[13] = sum((test13$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+
+race14 = mydata[mydata$race_class == classes[14], ]
+race14 = subset(race14, select = -c(race_class, race_id))
+model14 = randomForest(finishing_position~., race14[sample(nrow(race14)/5),])
+test14 = race14[sample(nrow(race14)/5),]
+finishing_position <- predict(model14, test14)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[14] = sum((test14$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+
+race15 = mydata[mydata$race_class == classes[15], ]
+race15 = subset(race15, select = -c(race_class, race_id))
+model15 = randomForest(finishing_position~., race15[sample(nrow(race15)/5),])
+test15 = race15[sample(nrow(race15)/5),]
+finishing_position <- predict(model15, test15)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[15] = sum((test15$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+race16 = mydata[mydata$race_class == classes[16], ]
+race16 = subset(race16, select = -c(race_class, race_id))
+model16 = randomForest(finishing_position~., race16[sample(nrow(race16)/5),])
+test16 = race16[sample(nrow(race16)/5),]
+finishing_position <- predict(model16, test16)
+write.csv(finishing_position,file="fp.csv",row.names=FALSE)
+finishing_position <- read.csv("fp.csv", stringsAsFactors = FALSE)
+error[16] = sum((test16$finishing_position - round(finishing_position$x))^2)/nrow(finishing_position)
+
+
+```
