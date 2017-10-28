@@ -1,8 +1,0 @@
-# ORIE-4741
-Project for ORIE 4741
-
-Edmond Mui (em656),
-
-Vanshika Bansal (vb273),
-
-Auston Li (al884)
