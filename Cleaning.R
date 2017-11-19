@@ -71,7 +71,7 @@ lastplace[1:14] = 14
 
 rr <- as.numeric(as.character(rr))
 
-#convert all the text into last place rankings
+#convert all the NA into last place rankings
 for (k in 1:n){
         if (is.na(rr[k])){
             rr[k] = lastplace[k] 
@@ -104,7 +104,7 @@ for (i in 1:length(tr)){
   }
   trainer[i,2] <- trainer[i,2]/count
 }
-
+#i = 1132
 for (i in 1:length(hrs)){
   count <- 0
   for (j in 1:n){
