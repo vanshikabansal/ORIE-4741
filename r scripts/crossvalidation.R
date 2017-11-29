@@ -31,6 +31,13 @@ for (z in 1:k){
   
 }
 
+q=set1[[1]]
+
+for (i in 2:k){
+  q = combine(set1[[i]],q)
+}
+
+
 error2 = rep(0,5)
 set2 = vector("list",5)
 
