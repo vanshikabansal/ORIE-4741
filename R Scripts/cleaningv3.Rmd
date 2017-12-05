@@ -1,0 +1,172 @@
+---
+title: "Cleaningv3"
+author: "Vanshika Bansal"
+date: "3 December 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "Cleaning data"
+author: "Vanshika Bansal"
+date: "27 October 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Assume we will predict the results for only one race, given the features for different horses. Then, specific information about horses like which tracks they run well in won't be used.
+
+```{r, echo=FALSE}
+
+horse<- read.csv("race-result-horse.csv", stringsAsFactors = FALSE)
+race <- read.csv("race-result-race.csv", stringsAsFactors = FALSE)
+
+# Merge race and horse information
+mydata <- merge(horse, race, by = "race_id")
+mydata <- mydata[!is.na(mydata$finishing_position), ]
+
+#Removing columns deemed unnecessary
+mydata <- subset(mydata, select = -c(src, sectional_time, incident_report, length_behind_winner, horse_number, race_date, race_number, track, track_condition,race_name, race_course, running_position_1, running_position_2, running_position_3, running_position_4, running_position_5, running_position_6, finish_time))
+
+#Cleaning positions to remove ties
+mydata$finishing_position[mydata$finishing_position == "1 DH"] = 1
+mydata$finishing_position[mydata$finishing_position == "2 DH"] = 2
+mydata$finishing_position[mydata$finishing_position == "3 DH"] = 3
+mydata$finishing_position[mydata$finishing_position == "4 DH"] = 4
+mydata$finishing_position[mydata$finishing_position == "5 DH"] = 5
+mydata$finishing_position[mydata$finishing_position == "6 DH"] = 6
+mydata$finishing_position[mydata$finishing_position == "7 DH"] = 7
+mydata$finishing_position[mydata$finishing_position == "8 DH"] = 8
+mydata$finishing_position[mydata$finishing_position == "9 DH"] = 9
+mydata$finishing_position[mydata$finishing_position == "10 DH"] = 10
+mydata$finishing_position[mydata$finishing_position == "11 DH"] = 11
+mydata$finishing_position[mydata$finishing_position == "12 DH"] = 12
+mydata$finishing_position[mydata$finishing_position == "13 DH"] = 13
+
+non_placing_horses <- mydata[mydata$finishing_position == "WV-A" |mydata$finishing_position== "WV"  | mydata$finishing_position=="WX"  | mydata$finishing_position=="PU" | mydata$finishing_position== "UR" |  mydata$finishing_position=="FE"  | mydata$finishing_position=="TNP" |mydata$finishing_position== "DISQ" | mydata$finishing_position=="WX-A" | mydata$finishing_position=="DNF",]
+withdrawn_horses <- mydata[mydata$finishing_position == "WV-A" |mydata$finishing_position== "WV"  | mydata$finishing_position=="WX"  | mydata$finishing_position=="WX-A" ,]
+
+#Use non withdrawn horses for predictions
+mydata <- mydata[!(mydata$finishing_position %in%  withdrawn_horses$finishing_position),]
+mydata$finishing_position <- as.numeric(mydata$finishing_position)
+
+#Num_horses in races
+all_races = unique(mydata$race_id)
+race_totals = rep(0,length(all_races))
+
+for (i in 1:length(all_races)){
+  race_totals[i] <- sum(mydata$race_id == all_races[i])
+}
+
+race_totals_set <- data.frame(all_races, race_totals)
+colnames(race_totals_set) = c("race_id","race_totals")
+mydata <- merge(mydata, race_totals_set, by = "race_id", all.x = TRUE)
+
+#Allotting non placing horses that weren't withdrawn the last place
+mydata$finishing_position[is.na(mydata$finishing_position)] <- mydata$race_totals[is.na(mydata$finishing_position)]
+
+```
+
+```{r,echo = FALSE}
+
+#Convert data to numeric to run random forest
+
+mydata$actual_weight <- as.numeric(mydata$actual_weight)
+mydata$declared_horse_weight <- as.numeric(mydata$declared_horse_weight)
+mydata$draw <- as.numeric(mydata$draw)
+mydata$win_odds <- as.numeric(mydata$win_odds)
+
+#Find meaningful features for horses, jockeys and trainers
+srand(0)
+race_ids = sample(unique(mydata$race_id))
+all_races = race_ids[1:floor(4*length(race_ids)/5)]
+mydata_total <- mydata
+mydata <- subset(mydata, mydata$race_id %in% all_races)
+mydata_test = subset(mydata_total, !(mydata_total$race_id %in% all_races))
+
+#calculating percentiles
+mydata$percentile <- mydata$finishing_position/mydata$race_totals
+mydata_test$percentile <- mydata_test$finishing_position/mydata_test$race_totals
+
+#calculating percentile averages for horses
+all_horses = unique(mydata$horse_id)
+horse_totals_set = data.frame(all_horses)
+horse_avg_percentile <- apply(horse_totals_set,1,function(x) mean(mydata$percentile[mydata$horse_id == x]))
+horse_totals_set$horse_avg_percentile <- horse_avg_percentile
+
+colnames(horse_totals_set) = c("horse_id","horse_avg_percentile")
+mydata_test <- merge(mydata_test, horse_totals_set, by = "horse_id", all.x = TRUE)
+mydata <- merge(mydata, horse_totals_set, by = "horse_id", all.x = TRUE)
+mydata_test$horse_avg_percentile[is.na(mydata_test$horse_avg_percentile)] <- mean(horse_avg_percentile)
+
+#calculating percentile averages for jockeys
+all_jockeys = unique(mydata$jockey)
+jockey_totals_set = data.frame(all_jockeys)
+jockey_avg_percentile <- apply(jockey_totals_set,1,function(x) mean(mydata$percentile[mydata$jockey == x]))
+jockey_totals_set$jockey_avg_percentile <- jockey_avg_percentile
+
+
+colnames(jockey_totals_set) = c("jockey","jockey_avg_percentile")
+mydata_test <- merge(mydata_test, jockey_totals_set, by = "jockey", all.x = TRUE)
+mydata <- merge(mydata, jockey_totals_set, by = "jockey", all.x = TRUE)
+mydata_test$jockey_avg_percentile[is.na(mydata_test$jockey_avg_percentile)] <- mean(jockey_avg_percentile)
+
+
+#calculating percentile averages for trainers
+all_trainers = unique(mydata$trainer)
+trainer_totals_set = data.frame(all_trainers)
+trainer_avg_percentile <- apply(trainer_totals_set,1,function(x) mean(mydata$percentile[mydata$trainer == x]))
+trainer_totals_set$trainer_avg_percentile <- trainer_avg_percentile
+
+colnames(trainer_totals_set) = c("trainer","trainer_avg_percentile")
+mydata_test <- merge(mydata_test, trainer_totals_set, by = "trainer", all.x = TRUE)
+mydata <- merge(mydata, trainer_totals_set, by = "trainer", all.x = TRUE)
+mydata_test$trainer_avg_percentile[is.na(mydata_test$trainer_avg_percentile)] <- mean(trainer_avg_percentile)
+
+```
+
+```{r}
+#remove unnecessary data
+mydata <- subset(mydata, select = -c(trainer, jockey, horse_id, horse_name, race_distance))
+
+```
+
+
+```{r,echo=FALSE}
+#Separate races by class and train
+classes = unique(mydata$race_class)
+set.seed(0)
+# for classes will < 1000 examples, clump them together
+
+race1 = mydata[mydata$race_class == "Class 2", ]
+race1 = subset(race1, select = -c(race_class, race_id))
+test1 = mydata_test[mydata_test$race_class == "Class 2", ]
+test1 = subset(test1, select = -c(race_class, race_id))
+
+
+race2 = mydata[mydata$race_class == "Class 3", ]
+race2 = subset(race2, select = -c(race_class, race_id))
+test2 = mydata_test[mydata_test$race_class == "Class 3", ]
+test2 = subset(test2, select = -c(race_class, race_id))
+
+race3 = mydata[mydata$race_class == "Class 4", ]
+race3 = subset(race3, select = -c(race_class, race_id))
+test3 = mydata_test[mydata_test$race_class == "Class 4", ]
+test3 = subset(test3, select = -c(race_class, race_id))
+
+race4 = mydata[mydata$race_class == "Class 5", ]
+race4 = subset(race4, select = -c(race_class, race_id))
+test4 = mydata_test[mydata_test$race_class == "Class 5", ]
+test4 = subset(test4, select = -c(race_class, race_id))
+
+race5 = mydata[mydata$race_class != "Class 5" & mydata$race_class != "Class 4" & mydata$race_class != "Class 3" & mydata$race_class != "Class 2", ]
+race5 = subset(race5, select = -c(race_class, race_id))
+test5 = mydata_test[mydata_test$race_class != "Class 5" & mydata_test$race_class != "Class 4" & mydata_test$race_class != "Class 3" & mydata_test$race_class != "Class 2", ]
+test5 = subset(test5, select = -c(race_class, race_id))
+
+```
